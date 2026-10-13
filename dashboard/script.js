@@ -102,7 +102,7 @@
   }
 
   get('data-source').textContent = store.isExtension
-    ? 'Private by default. Saved locally in your Chrome profile, shared with Buddy on YouTube and Google.'
+    ? 'Study history is saved locally in your Chrome profile. Optional AI checks send only your task and current YouTube title to the analysis service and GroqCloud.'
     : 'Local preview · This demo uses separate browser data. Open the extension icon for your real study history.';
   get('open-buddy').addEventListener('click', () => {
     if (get('lock-in-buddy-panel').hidden) get('lock-in-buddy-button').click();

@@ -1,11 +1,20 @@
 {
   "name": "lock-in-buddy",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "A vanilla JavaScript Chrome extension for local focus sessions and study history.",
+  "description": "A Chrome study companion with local focus history and opt-in Groq video relevance detection.",
+  "engines": { "node": ">=22.21.0" },
   "scripts": {
-    "test": "node tests/session.test.cjs",
-    "test:browser": "node tests/browser-smoke.cjs"
+    "start:server": "node server/index.js",
+    "test": "node --test tests/*.test.cjs",
+    "test:server": "node --test tests/server.test.cjs",
+    "test:ai": "node --test tests/analysis.test.cjs",
+    "test:browser": "node tests/browser-smoke.cjs && node tests/browser-ai.cjs",
+    "test:browser:ai": "node tests/browser-ai.cjs"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0"
   },
   "devDependencies": {
     "playwright": "1.58.2"

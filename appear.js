@@ -37,6 +37,15 @@
           </form>
         </details>
       </div>
+      <div class="ai-tools">
+        <label class="ai-toggle" for="lock-in-buddy-ai-enabled">
+          <input id="lock-in-buddy-ai-enabled" type="checkbox" aria-describedby="lock-in-buddy-ai-privacy" />
+          Check YouTube relevance with AI
+        </label>
+        <p id="lock-in-buddy-ai-privacy" class="ai-privacy">Optional · sends your saved task and current video title to the local analysis service and GroqCloud during a running focus session.</p>
+        <p id="lock-in-buddy-ai-status" class="ai-status" role="status">AI checks are off.</p>
+        <button id="lock-in-buddy-ai-retry" class="reset-button" type="button" hidden>Check again</button>
+      </div>
       <p id="lock-in-buddy-save-status" class="save-status" role="status">Loading your session…</p>
       <button id="lock-in-buddy-retry-load" class="reset-button" type="button" hidden>Retry loading session</button>
 
@@ -73,6 +82,10 @@
 
       <div id="lock-in-buddy-session-note" class="panel-footer">Small steps count, too.</div>
     </section>
+
+    <button id="lock-in-buddy-ai-reminder" class="ai-reminder" type="button" aria-label="Open Buddy’s video reminder" hidden>
+      <span role="status">This video may be a detour. Let’s return to your task.</span>
+    </button>
 
     <button id="lock-in-buddy-button" class="buddy" aria-label="Open buddy chat. Drag to move." aria-expanded="false" aria-controls="lock-in-buddy-panel" type="button">
       <span class="buddy-face" aria-hidden="true"><span class="eyes"><i></i><i></i></span><span class="smile"></span></span>

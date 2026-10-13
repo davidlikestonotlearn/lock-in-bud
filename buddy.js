@@ -16,6 +16,15 @@
   const store = globalThis.LockInBuddyStore.createClient();
   const saveStatus = root.querySelector('#lock-in-buddy-save-status');
   const retryLoad = root.querySelector('#lock-in-buddy-retry-load');
+  const aiToggle = root.querySelector('#lock-in-buddy-ai-enabled');
+  const aiStatus = root.querySelector('#lock-in-buddy-ai-status');
+  const aiRetry = root.querySelector('#lock-in-buddy-ai-retry');
+  const aiReminder = root.querySelector('#lock-in-buddy-ai-reminder');
+  const isYouTube = store.isExtension && location.origin === 'https://www.youtube.com';
+  let settings = { enabled: false };
+  let settingsBusy = false;
+  let aiFeedback = { status: 'off' };
+  let watcher = null;
   let state = null;
   let ready = false;
   let busy = false;
@@ -49,6 +58,13 @@
 
   // Place the open panel near buddy without going off-screen.
   function positionPanel() {
+    aiReminder.hidden = !panel.hidden || aiFeedback.classification !== 'distracting';
+    if (!aiReminder.hidden) {
+      const rect = buddy.getBoundingClientRect();
+      const top = rect.top >= aiReminder.offsetHeight + 24 ? rect.top - aiReminder.offsetHeight - 12 : rect.bottom + 12;
+      aiReminder.style.left = `${Math.max(12, Math.min(rect.right - aiReminder.offsetWidth, window.innerWidth - aiReminder.offsetWidth - 12))}px`;
+      aiReminder.style.top = `${Math.max(12, Math.min(top, window.innerHeight - aiReminder.offsetHeight - 12))}px`;
+    }
     // An early return stops the function when there is nothing to position.
     if (panel.hidden) return;
 
@@ -170,6 +186,7 @@
 
   // Clicking the close button calls setPanelOpen with false to hide the panel.
   root.querySelector('#lock-in-buddy-close-panel').addEventListener('click', () => setPanelOpen(false));
+  aiReminder.addEventListener('click', () => setPanelOpen(true));
 
   // This keyboard callback lets Escape close an open panel.
   root.addEventListener('keydown', (event) => {
@@ -242,6 +259,7 @@
   let nextCompletionAttempt = 0;
 
   function renderControls() {
+    aiToggle.disabled = !ready || settingsBusy || !store.isExtension;
     actionControls.forEach((control) => { control.disabled = !ready || busy; });
     durationButtons.forEach((button) => {
       button.disabled = !ready || busy || state?.status === 'running';
@@ -308,7 +326,48 @@
     renderTimer();
     renderControls();
     positionPanel();
+    watcher?.update(state, settings);
   }
+
+  function renderAIFeedback(feedback) {
+    aiFeedback = feedback;
+    aiStatus.dataset.classification = feedback.classification || '';
+    const statusText = {
+      off: 'AI checks are off.',
+      idle: 'Start or resume a focus session to check videos.',
+      waiting: 'Open a YouTube video to check its relevance.',
+      checking: 'Checking this video against your task…',
+      error: `Video check unavailable. ${feedback.error || 'Try again later.'} Wait a minute before retrying.`,
+    };
+    const resultText = {
+      relevant: 'This video looks related to your task.',
+      distracting: 'This video may be a detour. Let’s return to your task.',
+      uncertain: 'I’m not sure this video fits your task. You decide.',
+    };
+    aiStatus.textContent = feedback.status === 'result'
+      ? `${resultText[feedback.classification]} ${feedback.reason}` : statusText[feedback.status];
+    aiRetry.hidden = feedback.status !== 'error';
+    positionPanel();
+  }
+
+  function renderSettings(next) {
+    settings = next;
+    aiToggle.checked = next.enabled;
+    if (isYouTube) watcher?.update(state, settings);
+    else {
+      aiStatus.textContent = !store.isExtension ? 'AI checks are available in the installed Chrome extension.'
+        : settings.enabled ? 'AI checks are on. Open a YouTube video during a focus session.' : 'AI checks are off.';
+    }
+  }
+
+  aiToggle.addEventListener('change', async () => {
+    settingsBusy = true;
+    renderControls();
+    try { await store.setDetection(aiToggle.checked); }
+    catch (error) { aiToggle.checked = settings.enabled; aiStatus.textContent = error.message; }
+    finally { settingsBusy = false; renderControls(); }
+  });
+  aiRetry.addEventListener('click', () => watcher?.retry());
 
   // Wait for the save before treating an action as successful. This also prevents
   // rapid repeated clicks in this tab; the worker handles overlapping other tabs.
@@ -410,6 +469,16 @@
   }
 
   renderControls();
+  let stopObserving = null;
+  if (isYouTube) {
+    const YouTube = globalThis.LockInBuddyYouTube;
+    watcher = YouTube.createWatcher({
+      readVideo: () => YouTube.readVideo(document, location),
+      analyze: (video) => store.analyzeVideo(video), onFeedback: renderAIFeedback,
+    });
+    stopObserving = YouTube.observe(watcher, document, window);
+  }
+  store.subscribeSettings(renderSettings);
   store.subscribe(renderSession);
   let renderInterval = null;
   async function loadSession() {
@@ -449,6 +518,7 @@
   window.addEventListener('pagehide', (event) => {
     if (!event.persisted) {
       clearInterval(renderInterval);
+      stopObserving?.();
       store.destroy();
     }
   });
